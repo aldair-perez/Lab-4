@@ -1,0 +1,332 @@
+---
+title: "Lab4"
+author: "Aldair Perez"
+date: "03-21-2025"
+format: html
+execute:
+ echo: true
+---
+
+# Part 1
+```{r}
+remotes::install_github("lter/lterdatasampler", force = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(lterdatasampler)
+library(car)
+library(visdat)
+library(dplyr)
+```
+
+```{r}
+?and_vertebrates
+```
+
+```{r}
+glimpse(and_vertebrates)
+```
+```{r}
+vis_dat(and_vertebrates)
+```
+
+```{r}
+and_vertebrates |> 
+  filter(species == "Cutthroat trout") |> 
+  count(unittype)
+```
+
+```{r}
+and_vertebrates |> 
+  filter(species == "Cutthroat trout") |> 
+  drop_na(unittype) |> 
+  count(unittype)
+```
+
+```{r}
+trout_clean <- and_vertebrates  |>
+  filter(species == "Cutthroat trout") |>
+  filter(unittype %in% c("C", "P", "SC")) |>
+  drop_na(unittype, section)
+cont_table <- table(trout_clean$section, trout_clean$unittype)
+```
+
+```{r}
+chisq.test(cont_table)
+```
+
+```{r}
+trout_clean  |>  
+  count(unittype, section)  |>  
+  ggpubr::ggbarplot(x = 'unittype', y = 'n', 
+                    fill = 'section', 
+                    palette = c("#00AFBB", "#E7B800"),
+                    add = "mean_se") 
+```
+
+```{r}
+trout_clean |> 
+  drop_na(weight_g) |> 
+  ggpubr::ggviolin(x = "section", 
+                   y     = "weight_g", 
+                   add   = "boxplot",
+                   color = "section",
+                   palette = c("#00AFBB", "#E7B800")) 
+```
+
+```{r}
+cc_weight <- trout_clean |> 
+  filter(section == "CC") |> 
+  pull(weight_g)
+
+og_weight <- trout_clean |> 
+  filter(section == "OG") |> 
+  pull(weight_g)
+
+var.test(cc_weight, og_weight)
+```
+
+```{r}
+ggpubr::ggarrange(ggpubr::gghistogram(cc_weight, main = "Clear Cut"), 
+                  ggpubr::gghistogram(og_weight, main = "Old Growth"))
+```
+
+```{r}
+var.test(log(cc_weight), log(og_weight))
+```
+
+```{r}
+t.test(log(trout_clean$weight_g) ~ trout_clean$section, var.equal = TRUE)
+```
+
+```{r}
+t.test(trout_clean$weight_g ~ trout_clean$section, var.equal = FALSE)
+```
+
+```{r}
+sally_clean <- and_vertebrates |> 
+  filter(species == "Coastal giant salamander") |> 
+  drop_na(length_2_mm, weight_g)
+```
+
+```{r}
+ggarrange(gghistogram(sally_clean$length_2_mm, title = "Length"),
+gghistogram(sally_clean$weight_g, title = "Weight"))
+```
+
+```{r}
+s <- sally_clean |> 
+  slice_sample(n = 5000) 
+
+shapiro.test(s$length_2_mm)
+```
+
+```{r}
+shapiro.test(s$weight_g)
+```
+
+```{r}
+ggarrange(
+ gghistogram(log(sally_clean$length_2_mm), title = "Length"), 
+ gghistogram(log(sally_clean$weight_g), title = "Weight") )
+```
+
+```{r}
+cor.test(log(sally_clean$length_2_mm), log(sally_clean$weight_g))
+```
+
+```{r}
+sally_clean |> 
+  mutate(log_length = log(length_2_mm), log_weight = log(weight_g)) |> 
+  ggscatter(x = 'log_length', 
+            y = 'log_weight', 
+            alpha = .35,
+            add = "loess")
+```
+
+```{r}
+cor.test(sally_clean$length_2_mm, sally_clean$weight_g, method = "spearman")
+```
+
+## Question 1.)
+```{r}
+coastal_giant_salamander_data <- and_vertebrates %>%
+  filter(species == "Coastal giant salamander")
+```
+
+```{r}
+contingency_table <- table(coastal_giant_salamander_data$section, coastal_giant_salamander_data$unittype)
+```
+
+```{r}
+print(contingency_table)
+```
+
+```{r}
+chi_square_result <- chisq.test(contingency_table)
+print(chi_square_result)
+```
+The p-value from this chi test is (p-value < 2.2e-16).
+
+## Question 2.)
+```{r}
+unique(coastal_giant_salamander_data$section)
+```
+
+```{r}
+clear_cut_data <- coastal_giant_salamander_data[coastal_giant_salamander_data$section == "CC", ]
+old_growth_data <- coastal_giant_salamander_data[coastal_giant_salamander_data$section == "OG", ]
+```
+
+```{r}
+t_test_result <- t.test(weight_g ~ section, data = coastal_giant_salamander_data[coastal_giant_salamander_data$section %in% c("CC", "OG"), ])
+print(t_test_result)
+```
+The p-value is (8.629e-07). This means the difference in species biomass for CC and OG is statistically significant since the p-value is less than 0.05.
+
+## Question 3.)
+```{r}
+cutthroat_trout_data <- and_vertebrates[and_vertebrates$species == "Cutthroat trout", ]
+```
+
+```{r}
+cor_test_result <- cor.test(cutthroat_trout_data$length_1_mm, cutthroat_trout_data$weight_g)
+print(cor_test_result)
+```
+The cor for the correlation for length and weight for the trout is 0.912017, which means there's a strong correlation for length and weight.
+
+# Part 2
+```{r}
+install.packages("car")
+library(car)
+??car
+```
+
+```{r}
+data("pie_crab")
+?pie_crab
+count(pie_crab, site)
+```
+```{r}
+summary(pie_crab)
+```
+```{r}
+pie_crab |> 
+  ggboxplot(x = 'site', y = 'size', col = 'site') +
+  geom_jitter(size =.25) + 
+  theme(legend.postition = "none")
+```
+```{r}
+norms <- pie_crab |> 
+  nest(data = -site) |>
+  mutate(Shapiro = map(data, ~ shapiro.test(.x$size)),
+         n = map_dbl(data, nrow),
+         glance_shapiro = map(Shapiro, broom::glance)) |>
+  unnest(glance_shapiro)
+
+flextable::flextable(dplyr::select(norms, site, n, statistic, p.value)) |>
+  flextable::set_caption("Shapiro-Wilk normality test for size at each site")
+```
+```{r}
+(res_aov <- aov(size ~ site, data = pie_crab))
+```
+```{r}
+gghistogram(res_aov$residuals)
+```
+```{r}
+shapiro.test(res_aov$residuals)
+```
+```{r}
+leveneTest(size ~ site, data = pie_crab)
+```
+```{r}
+oneway.test(size ~ site, data = pie_crab, var.equal = FALSE)
+```
+```{r}
+pie_sites <- pie_crab |> 
+  filter(site %in% c("GTM", "DB", "PIE"))
+leveneTest(size ~ site, data = pie_sites)
+```
+```{r}
+pie_anova <- aov(size ~ site, data = pie_sites)
+summary(pie_anova)
+```
+```{r}
+TukeyHSD(pie_anova)
+```
+```{r}
+pie_lm <- lm(size ~ latitude, data = pie_crab)
+summary(pie_lm)
+```
+```{r}
+pie_crab |> 
+  ggscatter(x = 'latitude', y = 'size', 
+            alpha = .35, 
+            add = "reg.line")
+```
+```{r}
+new_lat <- data.frame(latitude = c(32, 36, 38))
+
+broom::augment(pie_lm, newdata = new_lat)
+```
+```{r}
+pie_mlm <- lm(size ~ latitude + air_temp + water_temp, data = pie_crab)
+
+summary(pie_mlm)
+```
+```{r}
+pie_crab |> 
+  dplyr::select(latitude, air_temp, water_temp) |> 
+  cor()
+```
+
+## Question 1.)
+```{r}
+pie_sites <- pie_sites %>%
+  arrange(latitude) %>%
+  mutate(site = factor(site, levels = unique(site)))
+```
+
+```{r}
+ggplot(pie_sites, aes(x = site, y = size, fill = site)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Carapace Width Across Sites Ordered by Latitude",
+       x = "Site", y = "Carapace Width (Size)") +
+  scale_fill_brewer(palette = "Set3")
+```
+```{r}
+anova_result <- aov(size ~ site, data = pie_sites)
+summary(anova_result)
+```
+According to the box plot and ANOVA test, the PIE site generally has a larger width site, followed by sites DB then GTM.
+
+## Question 2.)
+```{r}
+model_water <- lm(size ~ water_temp_sd, data = pie_sites)
+summary(model_water)
+```
+```{r}
+ggplot(pie_sites, aes(x = water_temp_sd, y = size)) +
+  geom_point(aes(color = "darkorange"), alpha = 0.5) +
+  geom_smooth(method = "lm", color = "darkblue", se = TRUE) +
+  labs(title = "Effect of Annual Water Temperature Variation on Carapace Width",
+       x = "Annual Variation in Water Temperature (SD)",
+       y = "Carapace Width (Size)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+According to the plot graph and lm, the data plots are almost away from the line of best fit, so the result is water_temp_sd and width size have no relationship.
+
+## Question 3.)
+```{r}
+correlation_matrix <- cor(pie_sites[, c("latitude", "air_temp_sd", "water_temp_sd")], use = "complete.obs")
+print(correlation_matrix)
+```
+```{r}
+model_multiple <- lm(size ~ latitude + air_temp_sd + water_temp_sd, data = pie_sites)
+summary(model_multiple)
+```
+According to the correlation test, the correlation for latitude, air temp sd, and water temp sd is mostly positively correlated, while there are others that aren't as strongly correlated (and some have negative correlation). The p-value of the linear model is (2.2e-16), so there's statistical significance for all 3 variables on width size.
