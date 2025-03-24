@@ -13,6 +13,6 @@ project:
  type: website
 
 format:
- html:
+  html:
 >>>>>>> f649cd114d745fa452dbeff0184de1e936ed0638
-   self-contained: true
+    self-contained: true
